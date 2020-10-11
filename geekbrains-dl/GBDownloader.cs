@@ -23,6 +23,7 @@ namespace GeekBrainsDownloader
         private const string DownloadDir = "./Courses/";
         private const string GeekBrainsUrl = "https://geekbrains.ru/";
         private const string LessonMaterials = "Материалы.txt";
+        private static readonly string[] IgnoreDownloadExt = {".html", ".htm"};
         private IBrowsingContext _context;
         public bool Auth;
 
@@ -181,11 +182,32 @@ namespace GeekBrainsDownloader
 
                     string downloadUrl = content.Url;
                     string downloadFileName = content.Title;
+                    string extensionFileName = GetExt(content.Url);
 
-                    if (Uri.TryCreate(content.Url, UriKind.Absolute, out var uri))
-                    {
-                        Console.WriteLine(Path.GetExtension(uri.LocalPath));
-                    }
+                    //IgnoreDownloadExt ToLower(
+
+                    //Console.WriteLine(extensionFileName);
+
+                    // if (!string.IsNullOrWhiteSpace(extensionFileName) && !IgnoreDownloadExt.Contains(extensionFileName
+                    //     .ToLower()))
+                    // {
+                    //     Console.WriteLine("Download file");
+                    //     Console.WriteLine(content.Url);
+                    // }
+                    // else
+                    // {
+                    //     Console.WriteLine("IgnoreDownloadExt");
+                    //     Console.WriteLine(content.Url);
+                    // }
+                    //
+                    // continue;
+
+
+                    // if (Uri.TryCreate(content.Url, UriKind.Absolute, out var uri))
+                    // {
+                    //     Console.WriteLine(Path.GetExtension(uri.LocalPath));
+                    //     extensionFileName = Path.GetExtension(uri.LocalPath);
+                    // }
 
                     //https://docs.google.com/presentation/d/<FileID>/export/<format>
                     //https://docs.google.com/uc?export=download&format=pdf&id=YourIndividualID
@@ -195,52 +217,66 @@ namespace GeekBrainsDownloader
                     //https://docs.google.com/presentation/d/1onxOXgov-QadTDT3oAFaOyLX4IRQEtoq6UNuj253u9k/export/pdf
                     //https://docs.google.com/document/export?format=pdf&id=13wfIzCG8zjZHe9ZotFzAi_g0khMsbSOWjb7L_7fwpwY
 
+                    //docs.google.com presentation
                     if (downloadUrl.ToLower().StartsWith("https://docs.google.com/presentation/"))
                     {
                         downloadUrl = downloadUrl.Replace("edit", "export/pdf");
                         downloadFileName = $"{content.Title}.pdf";
-                        //Console.WriteLine(downloadUrl);
+                        Console.WriteLine(downloadUrl);
 
 
                         //await DownloadFile(downloadUrl, saveDir, downloadFileName);
                     }
 
+                    //docs.google.com document
                     if (downloadUrl.ToLower().StartsWith("https://docs.google.com/document/"))
                     {
                         downloadUrl = downloadUrl.Replace("edit", "export?format=pdf");
                         downloadFileName = $"{content.Title}.pdf";
-                        //Console.WriteLine(downloadUrl);
+                        Console.WriteLine(downloadUrl);
 
                         //await DownloadFile(downloadUrl, saveDir, downloadFileName);
                     }
 
-                    if (downloadUrl.ToLower().EndsWith(".mp4"))
+
+                    if (!string.IsNullOrWhiteSpace(extensionFileName) && !IgnoreDownloadExt.Contains(extensionFileName
+                        .ToLower()))
                     {
-                        //downloadFileName = $"{lesson.Title}.mp4";
-                        downloadFileName = $"{content.Title}.mp4";
+                        downloadFileName = $"{content.Title}{extensionFileName}";
                         Console.WriteLine(downloadUrl);
                         Console.WriteLine(downloadFileName);
 
                         //await DownloadFile(downloadUrl, saveDir, downloadFileName);
                     }
 
-                    if (downloadUrl.ToLower().EndsWith(".zip"))
-                    {
-                        downloadFileName = $"{content.Title}.zip";
-                        Console.WriteLine(downloadUrl);
-                        Console.WriteLine(downloadFileName);
 
-                        await DownloadFile(downloadUrl, saveDir, downloadFileName);
-                    }
+                    // if (downloadUrl.ToLower().EndsWith(".mp4"))
+                    // {
+                    //     //downloadFileName = $"{lesson.Title}.mp4";
+                    //     downloadFileName = $"{content.Title}.mp4";
+                    //     Console.WriteLine(downloadUrl);
+                    //     Console.WriteLine(downloadFileName);
+                    //
+                    //     //await DownloadFile(downloadUrl, saveDir, downloadFileName);
+                    // }
 
-                    if (downloadUrl.ToLower().EndsWith(".rar"))
-                    {
-                        downloadFileName = $"{content.Title}.rar";
-                        Console.WriteLine(downloadUrl);
-                        Console.WriteLine(downloadFileName);
-
-                        //await DownloadFile(downloadUrl, saveDir, downloadFileName);
-                    }
+                    // if (downloadUrl.ToLower().EndsWith(".zip"))
+                    // {
+                    //     downloadFileName = $"{content.Title}.zip";
+                    //     Console.WriteLine(downloadUrl);
+                    //     Console.WriteLine(downloadFileName);
+                    //
+                    //     await DownloadFile(downloadUrl, saveDir, downloadFileName);
+                    // }
+                    //
+                    // if (downloadUrl.ToLower().EndsWith(".rar"))
+                    // {
+                    //     downloadFileName = $"{content.Title}.rar";
+                    //     Console.WriteLine(downloadUrl);
+                    //     Console.WriteLine(downloadFileName);
+                    //
+                    //     //await DownloadFile(downloadUrl, saveDir, downloadFileName);
+                    // }
 
 
                     // if (downloadFileName.ToLower().Equals("запись вебинара") && downloadUrl.ToLower().EndsWith(".mp4"))
@@ -267,6 +303,17 @@ namespace GeekBrainsDownloader
 
                 await File.WriteAllTextAsync(Path.Join(saveDir, LessonMaterials), materials.ToString());
             }
+        }
+
+
+        private string GetExt(string url)
+        {
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return Path.GetExtension(uri.LocalPath);
+            }
+
+            return null;
         }
 
 

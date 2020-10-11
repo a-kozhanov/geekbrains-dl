@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace GeekBrainsDownloader
 {
@@ -15,7 +16,7 @@ namespace GeekBrainsDownloader
             }
             catch (IOException ioex)
             {
-                //Console.WriteLine(ioex.Message);
+                Console.WriteLine(ioex.Message);
             }
         }
     }
