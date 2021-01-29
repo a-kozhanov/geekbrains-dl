@@ -1,32 +1,87 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
-using AngleSharp.Io;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace GeekBrainsDownloader
 {
     class Program
     {
-        private const string Dir = "./Courses/";
+        //private const string Dir = "./Courses/";
+        private const string ConsoleTitle = "geekbrains-dl v0.1 beta";
 
         static async Task Main(string[] args)
         {
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.Title = ConsoleTitle;
+
             if (args.Length != 3)
             {
-                Console.WriteLine($"args.Length != 3");
+                Console.WriteLine("Неверное количество параметров");
+                Console.WriteLine("Пример использования: geekbrains-dl.exe email password idCourseFromUrl");
+                //Console.ReadKey();
                 return;
             }
 
-            GbDownloader gbDownloader = new GbDownloader(args[0], args[1], args[2]);
+            if (string.IsNullOrWhiteSpace(args[0]))
+            {
+                Console.WriteLine("Неверно указан login\\email");
+                //Console.ReadKey();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(args[1]))
+            {
+                Console.WriteLine("Неверно указан пароль");
+                //Console.ReadKey();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(args[2]))
+            {
+                Console.WriteLine("Неверно указан idCourse");
+                //Console.ReadKey();
+                return;
+            }
+
+            GbDownloader gbDownloader = new GbDownloader(args[0].Trim(), args[1].Trim(), args[2].Trim());
             await gbDownloader.Login();
+
+            if (!gbDownloader.Auth)
+            {
+                Console.WriteLine("Неверный email или пароль");
+                //Console.ReadKey();
+                return;
+            }
+
             await gbDownloader.OpenCourse();
+
+            if (gbDownloader.CourseMentors.Count == 0)
+            {
+                Console.WriteLine("Не удалось найти преподавательский состав");
+                //Console.ReadKey();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(gbDownloader.CourseTitle))
+            {
+                Console.WriteLine("Не удалось найти название курса");
+                //Console.ReadKey();
+                return;
+            }
+
             await gbDownloader.GatherDataCourse();
+
+            if (gbDownloader.LessonsData.Count == 0)
+            {
+                Console.WriteLine("Не удалось найти файлы для скачивания");
+                //Console.ReadKey();
+                return;
+            }
+
             await gbDownloader.GetDataCourse();
+
+            Console.WriteLine("Cкачивание курса завершено");
+            //Console.ReadKey();
         }
     }
 }

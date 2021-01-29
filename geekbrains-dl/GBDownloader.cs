@@ -22,6 +22,7 @@ namespace GeekBrainsDownloader
         private readonly IConfiguration _config;
         private const string DownloadDir = "./Courses/";
         private const string GeekBrainsUrl = "https://geekbrains.ru/";
+        private const string GeekBrainsUrlEducation = "https://geekbrains.ru/education";
         private const string LessonMaterials = "Материалы.txt";
         private static readonly string[] IgnoreDownloadExt = {".html", ".htm"};
         private IBrowsingContext _context;
@@ -72,7 +73,6 @@ namespace GeekBrainsDownloader
             if (document.BaseUri.ToLower().Equals(GeekBrainsUrl) && document.Cookie.ToLower().Contains("jwt_token") &&
                 document.Cookie.ToLower().Contains("registered=1"))
             {
-                //Console.WriteLine(document.BaseUri);
                 Auth = true;
             }
         }
@@ -81,18 +81,33 @@ namespace GeekBrainsDownloader
         {
             if (!Auth) return;
 
+            //https://geekbrains.ru/chapters/* - бесплатные уроки
+            //https://geekbrains.ru/lessons/* - платные уроки
             IDocument document = await _context.OpenAsync($"{GeekBrainsUrl}lessons/{_courseId}");
 
-            CourseMentors = document.QuerySelectorAll<IHtmlAnchorElement>("a.mentor-list__name").Select(m => m.Text)
-                .Distinct().ToList();
-            CourseTitle = document.QuerySelectorAll<IHtmlSpanElement>("span.course-title").Select(m => m.InnerHtml)
-                .FirstOrDefault();
-            CourseStart = document.QuerySelectorAll<IHtmlSpanElement>("span.course-title-start")
-                .Select(m => m.InnerHtml).FirstOrDefault();
-            //LessonsUrl = document.QuerySelectorAll<IHtmlAnchorElement>("a.lesson-header").Select(m => m.Href).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            LessonsUrl = document.QuerySelectorAll<IHtmlAnchorElement>("a.lesson-header").Select(m => m.Href).ToList();
+            // //Проверка если редирект на страницу https://geekbrains.ru/education, возможно курс бесплатный тогда другой Url
+            // if (document.BaseUri.ToLower() == GeekBrainsUrlEducation.ToLower())
+            // {
+            //     document = await _context.OpenAsync($"{GeekBrainsUrl}chapters/{_courseId}");
+            // }
 
-            //Console.Write(document.Title);
+            //Преподавательский состав, пример: "Geek Brains"
+            CourseMentors = document.QuerySelectorAll<IHtmlAnchorElement>("a.mentor-list__name")
+                .Select(m => m.Text.Trim())
+                .Distinct().ToList();
+
+            //Название курса, пример: "Git. Быстрый старт"
+            CourseTitle = document.QuerySelectorAll<IHtmlSpanElement>("span.course-title")
+                .Select(m => m.InnerHtml.Trim())
+                .FirstOrDefault();
+
+            //Начало курса, пример: "22.06.2020 MSK (UTC+3)"
+            CourseStart = document.QuerySelectorAll<IHtmlSpanElement>("span.course-title-start")
+                .Select(m => m.InnerHtml.Trim()).FirstOrDefault();
+
+            //Url урока, пример: "/chapters/942"
+            LessonsUrl = document.QuerySelectorAll<IHtmlAnchorElement>("a.lesson-header").Select(m => m.Href.Trim())
+                .ToList();
         }
 
         public async Task GatherDataCourse()
@@ -128,7 +143,7 @@ namespace GeekBrainsDownloader
                 // lesson.Title = document.QuerySelectorAll<IHtmlSpanElement>("span.course-title").Select(m => m.InnerHtml)
                 //     .FirstOrDefault();
 
-                lesson.Title = document.QuerySelector("h3.title").Text().TrimEnd('.');
+                lesson.Title = document.QuerySelector("h3.title").Text().TrimEnd('.').Trim();
 
                 LessonContent lessonContent = new LessonContent();
 
@@ -153,10 +168,14 @@ namespace GeekBrainsDownloader
         public async Task GetDataCourse()
         {
             if (!Auth) return;
-            if (LessonsData.Count == 0) return;
 
             string firstMentor = CourseMentors.FirstOrDefault();
-            string courseStart = DateTime.Parse(CourseStart.Substring(0, 11)).ToString("yyyy.MM");
+            string courseStart = null;
+            if (CourseStart != null)
+            {
+                courseStart = DateTime.Parse(CourseStart.Substring(0, 11)).ToString("yyyy.MM");
+            }
+
 
             foreach (Lesson lesson in LessonsData)
             {
@@ -169,10 +188,14 @@ namespace GeekBrainsDownloader
                 materials.AppendLine();
                 materials.AppendLine("Материалы:");
 
+                //[GeekBrains][Geek Brains]
+                //Не добавляем в saveDir если - Преподавательский состав, Автор курса: Geek Brains
+                if (firstMentor == "Geek Brains") firstMentor = null;
 
                 foreach (LessonContent content in lesson.LessonContents)
                 {
-                    saveDir = Path.Join(DownloadDir, $"[GeekBrains][{firstMentor}] {CourseTitle} ({courseStart})",
+                    saveDir = Path.Join(DownloadDir,
+                        $"[GeekBrains]{(firstMentor is null ? "" : "[" + firstMentor + "]")} {CourseTitle}{(courseStart is null ? string.Empty : " (" + courseStart + ")")}",
                         lesson.Title);
                     Utils.CreateDir(saveDir);
 
@@ -222,10 +245,10 @@ namespace GeekBrainsDownloader
                     {
                         downloadUrl = downloadUrl.Replace("edit", "export/pdf");
                         downloadFileName = $"{content.Title}.pdf";
-                        Console.WriteLine(downloadUrl);
+                        //Console.WriteLine($"Загрузка файла : {downloadUrl}");
 
 
-                        //await DownloadFile(downloadUrl, saveDir, downloadFileName);
+                        await DownloadFile(downloadUrl, saveDir, downloadFileName);
                     }
 
                     //docs.google.com document
@@ -233,9 +256,9 @@ namespace GeekBrainsDownloader
                     {
                         downloadUrl = downloadUrl.Replace("edit", "export?format=pdf");
                         downloadFileName = $"{content.Title}.pdf";
-                        Console.WriteLine(downloadUrl);
+                        //Console.WriteLine(downloadUrl);
 
-                        //await DownloadFile(downloadUrl, saveDir, downloadFileName);
+                        await DownloadFile(downloadUrl, saveDir, downloadFileName);
                     }
 
 
@@ -243,10 +266,10 @@ namespace GeekBrainsDownloader
                         .ToLower()))
                     {
                         downloadFileName = $"{content.Title}{extensionFileName}";
-                        Console.WriteLine(downloadUrl);
-                        Console.WriteLine(downloadFileName);
+                        //Console.WriteLine(downloadUrl);
+                        //Console.WriteLine(downloadFileName);
 
-                        //await DownloadFile(downloadUrl, saveDir, downloadFileName);
+                        await DownloadFile(downloadUrl, saveDir, downloadFileName);
                     }
 
 
@@ -322,10 +345,25 @@ namespace GeekBrainsDownloader
             //GetFileName(url);
             //GetFileSize(url);
 
+            if (url is null) return;
+            if (path is null) return;
+
+            var invalidChars = Path.GetInvalidPathChars();
+            var validFilename = filename.Any(x => invalidChars.Contains(x));
+
+            if (filename.Length > 16 || validFilename)
+                filename = Path.GetRandomFileName().Replace(".", "") + GetExt(url);
+
+            var pathToSave = Path.Join(path, filename);
+
+            Console.WriteLine($"Загрузка файла : {url}");
+            Console.WriteLine($"Сохранение файла : {pathToSave}");
+            Console.WriteLine();
+
             IDownload download = _context.GetService<IDocumentLoader>().FetchAsync(new DocumentRequest(new Url(url)));
 
             using IResponse response = await download.Task;
-            await using FileStream target = File.OpenWrite(Path.Join(path, filename));
+            await using FileStream target = File.OpenWrite(pathToSave);
             await response.Content.CopyToAsync(target);
         }
 
