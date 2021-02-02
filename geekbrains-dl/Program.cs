@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,6 +15,7 @@ namespace GeekBrainsDownloader
             Console.OutputEncoding = Encoding.UTF8;
             Console.Title = ConsoleTitle;
 
+            //email password idCourse
             if (args.Length != 3)
             {
                 Console.WriteLine("Неверное количество параметров");
@@ -24,7 +26,18 @@ namespace GeekBrainsDownloader
 
             if (string.IsNullOrWhiteSpace(args[0]))
             {
-                Console.WriteLine("Неверно указан login\\email");
+                Console.WriteLine("Неверно указан email");
+                //Console.ReadKey();
+                return;
+            }
+
+            try
+            {
+                MailAddress m = new MailAddress(args[0]);
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine("Неверной формат email");
                 //Console.ReadKey();
                 return;
             }
@@ -79,6 +92,8 @@ namespace GeekBrainsDownloader
             }
 
             await gbDownloader.GetDataCourse();
+
+            await gbDownloader.Logout();
 
             Console.WriteLine("Cкачивание курса завершено");
             //Console.ReadKey();

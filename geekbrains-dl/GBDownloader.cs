@@ -63,18 +63,34 @@ namespace GeekBrainsDownloader
 
         public async Task Login()
         {
-            var document = await _context.OpenAsync($"{GeekBrainsUrl}login");
+            IDocument document = null;
+            try
+            {
+                document = await _context.OpenAsync($"{GeekBrainsUrl}login");
 
-            document.QuerySelector<IHtmlInputElement>("input#user_email").Value = _login;
-            document.QuerySelector<IHtmlInputElement>("input#user_password").Value = _password;
+                document.QuerySelector<IHtmlInputElement>("input#user_email").Value = _login;
+                document.QuerySelector<IHtmlInputElement>("input#user_password").Value = _password;
 
-            document = await document.QuerySelector<IHtmlInputElement>("input[type='submit']").SubmitAsync();
+                document = await document.QuerySelector<IHtmlInputElement>("input[type='submit']").SubmitAsync();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
 
             if (document.BaseUri.ToLower().Equals(GeekBrainsUrl) && document.Cookie.ToLower().Contains("jwt_token") &&
                 document.Cookie.ToLower().Contains("registered=1"))
             {
                 Auth = true;
             }
+        }
+
+        public async Task Logout()
+        {
+            IDocument document = await _context.OpenAsync($"{GeekBrainsUrl}logout");
+            Auth = false;
         }
 
         public async Task OpenCourse()
